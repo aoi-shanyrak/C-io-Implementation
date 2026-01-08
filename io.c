@@ -10,7 +10,7 @@ FILE _iob[OPEN_MAX] = {
     /* stdin, stdout, stderr: */
     {0, NULL, NULL, 0, {1, 0, 0, 0, 0}},
     {0, NULL, NULL, 1, {0, 1, 0, 0, 0}},
-    {0, NULL, NULL, 2, {0, 0, 0, 1, 1}}};
+    {0, NULL, NULL, 2, {0, 1, 1, 0, 0}}};
 
 int _fillbuf(FILE* fp) {
   if (!fp->flags._READ || fp->flags._EOF || fp->flags._ERR)
@@ -68,31 +68,6 @@ int _flushbuf(int c, FILE* fp) {
   return c;
 }
 
-int fflush(FILE* fp) {
-  if (fp == NULL) {
-    int ret = 0;
-    for (int i = 0; i < OPEN_MAX; i++) {
-      if ((_iob[i].flags._WRITE && fflush(&_iob[i])) == EOF)
-        ret = EOF;
-    }
-    return ret;
-  }
-
-  if (!fp->flags._WRITE)
-    return 0;
-
-  if (fp->ptr > fp->base && !fp->flags._UNBUF) {
-    int n = fp->ptr - fp->base;
-    if ((write(fp->fd, fp->base, n)) != n) {
-      fp->flags._ERR = 1;
-      return EOF;
-    }
-    fp->ptr = fp->base;
-    fp->count = BUFSIZE;
-  }
-  return 0;
-}
-
 // -------------------------------
 
 #define PERMS 0666 // can read and write
@@ -110,14 +85,14 @@ FILE* fopen(char* name, char* mode) {
   if (fp >= _iob + OPEN_MAX)
     return NULL; // if not found
 
-  if (*mode = 'w')
+  if (*mode == 'w')
     fd = creat(name, PERMS);
-  else if (*mode == "a") {
+  else if (*mode == 'a') {
     if ((fd = open(name, O_WRONLY, 0)) == -1)
       fd = creat(name, PERMS);
     lseek(fd, 0L, 2);
   } else
-    fd = open(name, O_WRONLY, 0);
+    fd = open(name, O_RDONLY, 0);
 
   if (fd == -1)
     return NULL;
@@ -125,8 +100,8 @@ FILE* fopen(char* name, char* mode) {
   fp->fd = fd;
   fp->count = 0;
   fp->base = NULL;
-  fp->flags._READ = *mode == 'r';
-  fp->flags._WRITE = *mode == 'w';
+  fp->flags._READ = (*mode == 'r');
+  fp->flags._WRITE = (*mode == 'w' || *mode == 'a');
   fp->flags._UNBUF = 0;
   fp->flags._EOF = 0;
   fp->flags._ERR = 0;
@@ -135,10 +110,10 @@ FILE* fopen(char* name, char* mode) {
 }
 
 int fclose(FILE* fp) {
-  if (fp->fd < 0 || fp == NULL)
+  if (fp == NULL || fp->fd < 0)
     return EOF;
 
-  int ret;
+  int ret = 0;
 
   if (fp->flags._WRITE && fflush(fp) == EOF)
     ret = EOF;
@@ -162,10 +137,42 @@ int fclose(FILE* fp) {
   return ret;
 }
 
+int fflush(FILE* fp) {
+  if (fp == NULL) {
+    int ret = 0;
+    for (int i = 0; i < OPEN_MAX; i++) {
+      if (_iob[i].flags._WRITE && fflush(&_iob[i]) == EOF)
+        ret = EOF;
+    }
+    return ret;
+  }
+
+  if (!fp->flags._WRITE)
+    return 0;
+
+  if (fp->ptr > fp->base && !fp->flags._UNBUF) {
+    int n = fp->ptr - fp->base;
+    if ((write(fp->fd, fp->base, n)) != n) {
+      fp->flags._ERR = 1;
+      return EOF;
+    }
+    fp->ptr = fp->base;
+    fp->count = BUFSIZE;
+  }
+  return 0;
+}
+
 int fseek(FILE* fp, long count, int mode) {
-  if (fp->flags._ERR)
+  if (fp == NULL || fp->flags._ERR)
     return -1;
 
+  if (fp->flags._WRITE)
+    if (fflush(fp) == EOF)
+      return -1;
+  if (fp->flags._READ) {
+    fp->ptr = fp->base;
+    fp->count = 0;
+  }
   if (lseek(fp->fd, count, mode) == -1) {
     fp->flags._ERR = 1;
     return -1;
