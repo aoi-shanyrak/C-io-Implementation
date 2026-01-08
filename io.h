@@ -1,7 +1,7 @@
 #ifndef IO_H
 #define IO_H
 
-#define NULL     ((char*) 0)
+#define NULL     ((void*) 0)
 #define EOF      (-1)
 #define BUFSIZE  1024
 #define OPEN_MAX 20 // max opened files
@@ -26,6 +26,10 @@ extern FILE _iob[OPEN_MAX];
 #define stdin     (&_iob[0])
 #define stdout    (&_iob[1])
 #define stderr    (&_iob[2])
+
+#define SEEK_SET  0
+#define SEEK_CUR  1
+#define SEEK_END  2
 
 #define feof(P)   ((P)->flags._EOF)
 #define ferror(P) ((P)->flags._ERR)

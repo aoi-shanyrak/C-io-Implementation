@@ -53,7 +53,11 @@ int _flushbuf(int c, FILE* fp) {
     fp->ptr = fp->base;
     fp->count = BUFSIZE;
   }
+  if (fp->ptr == NULL)
+    fp->ptr = fp->base;
+
   *fp->ptr++ = c;
+  fp->count--;
 
   if (fp->ptr >= fp->base + BUFSIZE || c == '\n') {
     int n = fp->ptr - fp->base;
@@ -64,7 +68,6 @@ int _flushbuf(int c, FILE* fp) {
     fp->ptr = fp->base;
     fp->count = BUFSIZE;
   }
-  fp->count--;
   return c;
 }
 
