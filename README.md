@@ -1,4 +1,4 @@
-# C-IO-Implementation
+# C-io-Implementation
 
 ### Project Description
 This is a from-scratch implementation of standard C input/output functions (stdio.h). The project includes custom versions of `fopen`, `fclose`, `fseek`, `fflush`, and buffered read/write operations.
