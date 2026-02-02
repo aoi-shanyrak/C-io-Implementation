@@ -41,6 +41,3 @@ The test suite validates:
 - Multiple file handling
 - Unbuffered stderr output
 - EOF and error flag management
-
-### License
-This educational implementation is free to use for learning purposes.
